@@ -7,7 +7,7 @@ pool:
 variables:
   imageName: livraria
   ec2Host: SEU_IP_ELASTIC   # trocar pelo Elastic IP da EC2
-  sshKey: vm-aws-key.pem     # nome do Secure file em Pipelines > Library
+  sshKey: vm-livraria-key.pem
   envFile: /home/ec2-user/cloud-gallery.env
 
 resources:
