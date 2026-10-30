@@ -1,0 +1,549 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Livraria Cloud</title>
+<style>
+  :root {
+    --tinta: #15202b;
+    --tinta-suave: #52606d;
+    --papel: #f7f8f5;
+    --painel: #ffffff;
+    --linha: #d8ddd3;
+    --verde: #0e6b63;
+    --verde-claro: #e3f1ee;
+    --vinho: #a3243b;
+    --vinho-claro: #f8e6e9;
+    --ambar: #8a5a00;
+    --ambar-claro: #fbf0d9;
+    --madeira: #8b6b4a;
+    --serifa: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--papel);
+    color: var(--tinta);
+    font: 16px/1.5 var(--sans);
+  }
+  a { color: var(--verde); }
+  :focus-visible { outline: 3px solid var(--verde); outline-offset: 2px; }
+
+  .topo {
+    padding: 28px clamp(16px, 4vw, 48px) 20px;
+    border-bottom: 1px solid var(--linha);
+    background: var(--painel);
+  }
+  .topo h1 {
+    margin: 0;
+    font: 700 clamp(2rem, 4vw, 2.8rem)/1.1 var(--serifa);
+    letter-spacing: -0.01em;
+  }
+  .topo p { margin: 6px 0 0; color: var(--tinta-suave); max-width: 60ch; }
+
+  .grade {
+    display: grid;
+    grid-template-columns: minmax(280px, 340px) 1fr;
+    gap: 28px;
+    padding: 28px clamp(16px, 4vw, 48px) 8px;
+    align-items: start;
+  }
+  @media (max-width: 860px) { .grade { grid-template-columns: 1fr; } }
+
+  h2 { margin: 0 0 12px; font: 700 1.25rem/1.2 var(--serifa); }
+  .bloco {
+    background: var(--painel);
+    border: 1px solid var(--linha);
+    border-radius: 6px;
+    padding: 18px;
+  }
+  .lateral { display: grid; gap: 20px; position: sticky; top: 16px; }
+  @media (max-width: 860px) { .lateral { position: static; } }
+
+  /* ---------- Estado do ambiente ---------- */
+  .estado { list-style: none; margin: 0; padding: 0; }
+  .estado li { padding: 12px 0; border-top: 1px solid var(--linha); }
+  .estado li:first-child { border-top: 0; padding-top: 0; }
+  .estado .linha { display: flex; align-items: center; gap: 10px; font-weight: 600; }
+  .estado .detalhe { margin: 2px 0 0 22px; font-size: 0.875rem; color: var(--tinta-suave); overflow-wrap: anywhere; }
+  .ponto { width: 12px; height: 12px; border-radius: 50%; background: var(--linha); flex: none; }
+  .ponto.ok { background: var(--verde); }
+  .ponto.erro { background: var(--vinho); }
+  .ponto.aviso { background: var(--ambar); }
+  .estado .valor { margin-left: auto; white-space: nowrap; font: 500 0.8125rem var(--mono); color: var(--tinta-suave); }
+  .rodape-estado { margin: 12px 0 0; font-size: 0.8125rem; color: var(--tinta-suave); }
+
+  .ficha { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 0.875rem; }
+  .ficha dt { color: var(--tinta-suave); }
+  .ficha dd { margin: 0; font-family: var(--mono); overflow-wrap: anywhere; }
+
+  /* ---------- Formulario ---------- */
+  .form { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .form .largo { grid-column: 1 / -1; }
+  @media (max-width: 560px) { .form { grid-template-columns: 1fr; } }
+  label { display: block; font-size: 0.875rem; font-weight: 600; margin-bottom: 4px; }
+  input[type=text], input[type=file] {
+    width: 100%;
+    padding: 9px 10px;
+    border: 1px solid #aeb6a8;
+    border-radius: 4px;
+    background: #fff;
+    font: inherit;
+  }
+  button {
+    font: 600 0.9375rem var(--sans);
+    padding: 9px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--verde);
+    background: var(--verde);
+    color: #fff;
+    cursor: pointer;
+  }
+  button:hover { background: #0b5a53; }
+  button:disabled { opacity: 0.55; cursor: progress; }
+  button.sec { background: #fff; color: var(--verde); }
+  button.sec:hover { background: var(--verde-claro); }
+  button.perigo { background: #fff; color: var(--vinho); border-color: var(--vinho); }
+  button.perigo:hover { background: var(--vinho-claro); }
+  button.mini { padding: 5px 10px; font-size: 0.8125rem; }
+
+  .aviso-msg { margin: 12px 0 0; padding: 10px 12px; border-radius: 4px; font-size: 0.9375rem; }
+  .aviso-msg[hidden] { display: none; }
+  .aviso-msg.ok { background: var(--verde-claro); color: #07443f; }
+  .aviso-msg.erro { background: var(--vinho-claro); color: #701729; }
+
+  /* ---------- Estante ---------- */
+  .estante-cab { display: flex; align-items: baseline; justify-content: space-between; margin: 28px 0 12px; }
+  .estante-cab h2 { margin: 0; }
+  .estante-cab span { font-size: 0.875rem; color: var(--tinta-suave); }
+  .livros {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 22px 18px;
+    padding: 0 0 14px;
+    border-bottom: 10px solid var(--madeira);
+    min-height: 120px;
+  }
+  .livro { display: flex; flex-direction: column; gap: 8px; }
+  .capa {
+    aspect-ratio: 2 / 3;
+    width: 100%;
+    border-radius: 2px 6px 6px 2px;
+    border-left: 6px solid rgba(0, 0, 0, 0.25);
+    box-shadow: 0 6px 10px -6px rgba(21, 32, 43, 0.5);
+    object-fit: cover;
+    display: flex;
+    align-items: flex-end;
+    padding: 12px;
+    color: #fff;
+    font: 700 1.05rem/1.2 var(--serifa);
+    overflow: hidden;
+  }
+  img.capa { padding: 0; display: block; }
+  .livro h3 { margin: 0; font: 700 1rem/1.25 var(--serifa); }
+  .livro .autor { margin: 0; font-size: 0.875rem; color: var(--tinta-suave); }
+  .livro .acoes { display: flex; gap: 6px; flex-wrap: wrap; }
+  .livro .origem { font: 0.75rem var(--mono); color: var(--tinta-suave); overflow-wrap: anywhere; }
+  .vazio { grid-column: 1 / -1; align-self: center; color: var(--tinta-suave); margin: 0; padding: 18px 0; }
+
+  /* ---------- Registro de requisicoes ---------- */
+  .registro { margin: 22px clamp(16px, 4vw, 48px) 40px; }
+  .registro .nota { margin: 0 0 10px; font-size: 0.875rem; color: var(--tinta-suave); }
+  .tabela-rolagem { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font: 0.875rem var(--mono); }
+  th, td { text-align: left; padding: 6px 10px; border-top: 1px solid var(--linha); white-space: nowrap; }
+  th { font: 600 0.8125rem var(--sans); color: var(--tinta-suave); border-top: 0; }
+  td.s2 { color: var(--verde); }
+  td.s4 { color: var(--ambar); }
+  td.s5 { color: var(--vinho); font-weight: 700; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+
+<header class="topo">
+  <h1>Livraria Cloud</h1>
+  <p>Cadastro de livros rodando em nuvem: aplicação em container na EC2, dados no RDS MySQL e capas no S3.</p>
+</header>
+
+<main>
+  <div class="grade">
+    <aside class="lateral" aria-label="Estado do ambiente">
+      <section class="bloco">
+        <h2>Estado do ambiente</h2>
+        <ul class="estado">
+          <li>
+            <div class="linha"><span class="ponto" id="p-app"></span>Aplicação<span class="valor" id="v-app">…</span></div>
+            <p class="detalhe">Container na EC2 (<code>/health</code>)</p>
+          </li>
+          <li>
+            <div class="linha"><span class="ponto" id="p-db"></span>Banco de dados<span class="valor" id="v-db">…</span></div>
+            <p class="detalhe" id="d-db">RDS MySQL (<code>/ready</code>)</p>
+          </li>
+          <li>
+            <div class="linha"><span class="ponto" id="p-s3"></span>Armazenamento<span class="valor" id="v-s3">…</span></div>
+            <p class="detalhe" id="d-s3">Bucket S3</p>
+          </li>
+        </ul>
+        <p class="rodape-estado" id="verificado">Verificando…</p>
+      </section>
+
+      <section class="bloco">
+        <h2>Esta execução</h2>
+        <dl class="ficha">
+          <dt>Endereço</dt><dd id="f-endereco">—</dd>
+          <dt>Build</dt><dd id="f-versao">—</dd>
+          <dt>Container</dt><dd id="f-container">—</dd>
+          <dt>No ar há</dt><dd id="f-uptime">—</dd>
+        </dl>
+      </section>
+    </aside>
+
+    <section aria-label="Livros">
+      <div class="bloco">
+        <h2>Cadastrar livro</h2>
+        <div class="form" id="form-livro">
+          <div>
+            <label for="titulo">Título</label>
+            <input type="text" id="titulo" maxlength="200" autocomplete="off">
+          </div>
+          <div>
+            <label for="autor">Autor</label>
+            <input type="text" id="autor" maxlength="200" autocomplete="off">
+          </div>
+          <div class="largo">
+            <label for="capa">Capa (png, jpg ou gif, até 5 MB)</label>
+            <input type="file" id="capa" accept=".png,.jpg,.jpeg,.gif">
+          </div>
+          <div class="largo"><button type="button" id="btn-cadastrar">Cadastrar livro</button></div>
+        </div>
+        <p class="aviso-msg" id="msg" role="status" hidden></p>
+      </div>
+
+      <div class="estante-cab">
+        <h2>Estante</h2>
+        <span id="contagem"></span>
+      </div>
+      <div class="livros" id="livros"></div>
+    </section>
+  </div>
+
+  <section class="registro bloco" aria-label="Registro de requisições">
+    <h2>Registro de requisições</h2>
+    <p class="nota">Últimas 60 chamadas recebidas por este container. O log completo fica em <code>docker logs livraria</code> na EC2.</p>
+    <div class="tabela-rolagem">
+      <table>
+        <thead><tr><th>Hora</th><th>Método</th><th>Caminho</th><th>Status</th><th>Tempo</th></tr></thead>
+        <tbody id="log-corpo"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<input type="file" id="capa-troca" accept=".png,.jpg,.jpeg,.gif" hidden>
+
+<script>
+(function () {
+  "use strict";
+  var COR_CAPAS = ["#0e6b63", "#34495e", "#7a3b69", "#8a4b2a", "#2f5d8a", "#5b6b2f"];
+  var POLL = { "X-Painel": "1" };
+  var ultimoUploadOk = null;
+  var livroParaTroca = null;
+
+  function $(id) { return document.getElementById(id); }
+
+  function mostrarMsg(texto, tipo) {
+    var el = $("msg");
+    el.textContent = texto;
+    el.className = "aviso-msg " + tipo;
+    el.hidden = false;
+  }
+
+  function limparMsg() { $("msg").hidden = true; }
+
+  function medir(url) {
+    var t0 = performance.now();
+    return fetch(url, { headers: POLL, cache: "no-store" }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (corpo) {
+        return { ok: r.ok, ms: Math.round(performance.now() - t0), corpo: corpo };
+      });
+    });
+  }
+
+  function marcar(id, estado, texto) {
+    $("p-" + id).className = "ponto " + estado;
+    $("v-" + id).textContent = texto;
+  }
+
+  function formatarUptime(s) {
+    if (s < 60) return s + " s";
+    if (s < 3600) return Math.floor(s / 60) + " min";
+    var h = Math.floor(s / 3600);
+    return h + " h " + Math.floor((s % 3600) / 60) + " min";
+  }
+
+  /* ---------- Estado do ambiente ---------- */
+  function atualizarEstado() {
+    medir("/health").then(function (r) {
+      if (r.ok) marcar("app", "ok", "ok · " + r.ms + " ms");
+      else marcar("app", "erro", "falhou");
+    }).catch(function () { marcar("app", "erro", "sem resposta"); });
+
+    medir("/ready").then(function (r) {
+      if (r.ok) marcar("db", "ok", "pronto · " + r.ms + " ms");
+      else {
+        marcar("db", "erro", "sem conexão");
+        $("d-db").textContent = r.corpo.detalhe || "O banco não respondeu.";
+      }
+    }).catch(function () { marcar("db", "erro", "sem resposta"); });
+
+    medir("/info").then(function (r) {
+      var i = r.corpo;
+      $("f-endereco").textContent = location.host;
+      $("f-versao").textContent = i.versao;
+      $("f-container").textContent = i.container;
+      $("f-uptime").textContent = formatarUptime(i.uptime_segundos);
+      if (r.ok && i.db_host && $("p-db").className.indexOf("erro") === -1) {
+        $("d-db").textContent = i.db_host + " / " + i.db_nome;
+      }
+      if (!i.bucket) {
+        marcar("s3", "aviso", "não configurado");
+        $("d-s3").textContent = "Definir AWS_BUCKET_NAME.";
+      } else {
+        marcar("s3", ultimoUploadOk === false ? "erro" : "ok",
+               ultimoUploadOk === true ? "envio ok" : (ultimoUploadOk === false ? "envio falhou" : "configurado"));
+        $("d-s3").textContent = i.bucket + "/" + i.prefixo + " · " + i.regiao;
+      }
+      $("verificado").textContent = "Verificado às " + new Date().toLocaleTimeString("pt-BR");
+    }).catch(function () {
+      $("verificado").textContent = "Não foi possível consultar a aplicação.";
+    });
+  }
+
+  /* ---------- Livros ---------- */
+  function corDoTitulo(t) {
+    var soma = 0;
+    for (var k = 0; k < t.length; k++) soma += t.charCodeAt(k);
+    return COR_CAPAS[soma % COR_CAPAS.length];
+  }
+
+  function criarCapa(livro) {
+    if (livro.capa_url) {
+      var img = document.createElement("img");
+      img.className = "capa";
+      img.alt = "Capa de " + livro.titulo;
+      img.loading = "lazy";
+      img.src = livro.capa_url;
+      img.addEventListener("error", function () {
+        var falha = criarCapaVazia(livro);
+        falha.title = "A imagem existe no banco mas não abriu. Confira a política pública do bucket.";
+        img.replaceWith(falha);
+      });
+      return img;
+    }
+    return criarCapaVazia(livro);
+  }
+
+  function criarCapaVazia(livro) {
+    var div = document.createElement("div");
+    div.className = "capa";
+    div.style.background = corDoTitulo(livro.titulo);
+    div.textContent = livro.titulo;
+    return div;
+  }
+
+  function criarCartao(livro) {
+    var art = document.createElement("article");
+    art.className = "livro";
+    art.appendChild(criarCapa(livro));
+
+    var h = document.createElement("h3");
+    h.textContent = livro.titulo;
+    art.appendChild(h);
+
+    var a = document.createElement("p");
+    a.className = "autor";
+    a.textContent = livro.autor + " · id " + livro.id;
+    art.appendChild(a);
+
+    if (livro.capa_url) {
+      var o = document.createElement("a");
+      o.className = "origem";
+      o.href = livro.capa_url;
+      o.target = "_blank";
+      o.rel = "noopener";
+      o.textContent = livro.capa_url.replace(/^https:\/\//, "");
+      art.appendChild(o);
+    }
+
+    var acoes = document.createElement("div");
+    acoes.className = "acoes";
+    var bCapa = document.createElement("button");
+    bCapa.className = "sec mini";
+    bCapa.textContent = livro.capa_url ? "Trocar capa" : "Enviar capa";
+    bCapa.addEventListener("click", function () {
+      livroParaTroca = livro.id;
+      $("capa-troca").click();
+    });
+    var bDel = document.createElement("button");
+    bDel.className = "perigo mini";
+    bDel.textContent = "Excluir";
+    bDel.addEventListener("click", function () { excluir(livro); });
+    acoes.appendChild(bCapa);
+    acoes.appendChild(bDel);
+    art.appendChild(acoes);
+    return art;
+  }
+
+  function carregarLivros() {
+    return fetch("/livros", { headers: POLL, cache: "no-store" })
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); })
+      .then(function (lista) {
+        var cont = $("livros");
+        cont.textContent = "";
+        $("contagem").textContent = lista.length === 1 ? "1 livro" : lista.length + " livros";
+        if (!lista.length) {
+          var v = document.createElement("p");
+          v.className = "vazio";
+          v.textContent = "A estante está vazia. Cadastre o primeiro livro no formulário acima.";
+          cont.appendChild(v);
+          return;
+        }
+        lista.forEach(function (l) { cont.appendChild(criarCartao(l)); });
+      })
+      .catch(function (e) {
+        mostrarMsg("Não foi possível listar os livros (" + e.message + "). Veja o estado do banco ao lado.", "erro");
+      });
+  }
+
+  function enviarCapa(id, arquivo) {
+    var fd = new FormData();
+    fd.append("capa", arquivo);
+    return fetch("/livros/" + id + "/capa", { method: "POST", body: fd }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (corpo) {
+        if (!r.ok) {
+          ultimoUploadOk = false;
+          throw new Error(corpo.erro || (r.status === 413 ? "arquivo maior que 5 MB" : "erro " + r.status));
+        }
+        ultimoUploadOk = true;
+        return corpo;
+      });
+    });
+  }
+
+  function cadastrar() {
+    var titulo = $("titulo").value.trim();
+    var autor = $("autor").value.trim();
+    var arquivo = $("capa").files[0];
+    limparMsg();
+    if (!titulo || !autor) {
+      mostrarMsg("Preencha título e autor para cadastrar.", "erro");
+      return;
+    }
+    var botao = $("btn-cadastrar");
+    botao.disabled = true;
+    fetch("/livros", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titulo: titulo, autor: autor })
+    }).then(function (r) {
+      return r.json().then(function (corpo) {
+        if (!r.ok) throw new Error(corpo.erro || "erro " + r.status);
+        return corpo;
+      });
+    }).then(function (livro) {
+      if (!arquivo) return "Livro cadastrado no banco (id " + livro.id + ").";
+      return enviarCapa(livro.id, arquivo).then(function () {
+        return "Livro cadastrado (id " + livro.id + ") e capa enviada ao S3.";
+      }).catch(function (e) {
+        return "Livro cadastrado (id " + livro.id + "), mas a capa falhou: " + e.message + ".";
+      });
+    }).then(function (texto) {
+      mostrarMsg(texto, texto.indexOf("falhou") === -1 ? "ok" : "erro");
+      $("titulo").value = "";
+      $("autor").value = "";
+      $("capa").value = "";
+      return carregarLivros();
+    }).catch(function (e) {
+      mostrarMsg("Não foi possível cadastrar: " + e.message + ".", "erro");
+    }).then(function () {
+      botao.disabled = false;
+      atualizarLog();
+      atualizarEstado();
+    });
+  }
+
+  function excluir(livro) {
+    if (!window.confirm("Excluir \"" + livro.titulo + "\" do banco?")) return;
+    fetch("/livros/" + livro.id, { method: "DELETE" }).then(function (r) {
+      if (!r.ok) throw new Error("erro " + r.status);
+      mostrarMsg("Livro \"" + livro.titulo + "\" excluído.", "ok");
+      return carregarLivros();
+    }).catch(function (e) {
+      mostrarMsg("Não foi possível excluir: " + e.message + ".", "erro");
+    }).then(atualizarLog);
+  }
+
+  /* ---------- Registro ---------- */
+  function atualizarLog() {
+    fetch("/logs", { headers: POLL, cache: "no-store" })
+      .then(function (r) { return r.json(); })
+      .then(function (linhas) {
+        var corpo = $("log-corpo");
+        corpo.textContent = "";
+        if (!linhas.length) {
+          var tr = document.createElement("tr");
+          var td = document.createElement("td");
+          td.colSpan = 5;
+          td.textContent = "Nenhuma requisição registrada ainda. Cadastre um livro para ver as chamadas aqui.";
+          tr.appendChild(td);
+          corpo.appendChild(tr);
+          return;
+        }
+        linhas.forEach(function (l) {
+          var tr = document.createElement("tr");
+          [l.hora, l.metodo, l.caminho, l.status, l.ms + " ms"].forEach(function (v, idx) {
+            var td = document.createElement("td");
+            td.textContent = v;
+            if (idx === 3) td.className = "s" + String(l.status).charAt(0);
+            tr.appendChild(td);
+          });
+          corpo.appendChild(tr);
+        });
+      })
+      .catch(function () { /* o estado da aplicacao ja avisa */ });
+  }
+
+  /* ---------- Eventos ---------- */
+  $("btn-cadastrar").addEventListener("click", cadastrar);
+  ["titulo", "autor"].forEach(function (id) {
+    $(id).addEventListener("keydown", function (e) { if (e.key === "Enter") cadastrar(); });
+  });
+
+  $("capa-troca").addEventListener("change", function () {
+    var arquivo = this.files[0];
+    var id = livroParaTroca;
+    this.value = "";
+    if (!arquivo || id === null) return;
+    limparMsg();
+    enviarCapa(id, arquivo).then(function () {
+      mostrarMsg("Capa enviada ao S3 e salva no livro " + id + ".", "ok");
+      return carregarLivros();
+    }).catch(function (e) {
+      mostrarMsg("Não foi possível enviar a capa: " + e.message + ".", "erro");
+    }).then(function () { atualizarLog(); atualizarEstado(); });
+  });
+
+  atualizarEstado();
+  carregarLivros();
+  atualizarLog();
+  setInterval(atualizarEstado, 8000);
+  setInterval(atualizarLog, 4000);
+})();
+</script>
+</body>
+</html>

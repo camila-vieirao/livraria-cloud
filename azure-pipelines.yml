@@ -6,7 +6,9 @@ pool:
 
 variables:
   imageName: livraria
-  ec2Host: SEU_IP_ELASTIC
+  ec2Host: SEU_IP_ELASTIC   # trocar pelo Elastic IP da EC2
+  sshKey: vm-aws-key.pem     # nome do Secure file em Pipelines > Library
+  envFile: /home/ec2-user/cloud-gallery.env
 
 resources:
   containers:
@@ -89,22 +91,37 @@ stages:
     - task: DownloadSecureFile@1
       name: chave
       inputs:
-        secureFile: vm-livraria-key.pem
+        secureFile: $(sshKey)
     - script: |
         chmod 400 $(chave.secureFilePath)
-        docker build -t $(imageName):$(Build.BuildId) -t $(imageName):latest .
+        docker build --build-arg BUILD_ID=$(Build.BuildId) -t $(imageName):$(Build.BuildId) -t $(imageName):latest .
         docker save $(imageName):latest | gzip > livraria.tar.gz
         scp -o StrictHostKeyChecking=no -i $(chave.secureFilePath) livraria.tar.gz ec2-user@$(ec2Host):/home/ec2-user/
-        ssh -o StrictHostKeyChecking=no -i $(chave.secureFilePath) ec2-user@$(ec2Host) "gunzip -c /home/ec2-user/livraria.tar.gz | docker load && docker rm -f livraria || true && docker run -d --name livraria --restart always --env-file /home/ec2-user/app.env -p 80:3000 $(imageName):latest"
+        ssh -o StrictHostKeyChecking=no -i $(chave.secureFilePath) ec2-user@$(ec2Host) "gunzip -c /home/ec2-user/livraria.tar.gz | docker load && docker rm -f livraria || true; docker run -d --name livraria --restart always --env-file $(envFile) -p 80:3000 $(imageName):latest && docker image prune -f"
       displayName: 'Build Docker, enviar e atualizar container'
     - script: |
         for i in $(seq 1 15); do
           if curl -fs http://$(ec2Host)/health; then
-            echo "Deploy validado"
+            echo ""
+            echo "Aplicacao no ar (/health ok)"
+            break
+          fi
+          if [ "$i" = "15" ]; then echo "Health check falhou"; exit 1; fi
+          sleep 4
+        done
+        for i in $(seq 1 10); do
+          if curl -fs http://$(ec2Host)/ready; then
+            echo ""
+            echo "Aplicacao pronta, banco conectado (/ready ok)"
             exit 0
           fi
           sleep 4
         done
-        echo "Health check falhou"
+        echo "Readiness check falhou (confira as variaveis do banco na EC2)"
         exit 1
-      displayName: 'Validar deploy (health check)'
+      displayName: 'Validar deploy (health e readiness)'
+    - script: |
+        chmod 400 $(chave.secureFilePath)
+        ssh -o StrictHostKeyChecking=no -i $(chave.secureFilePath) ec2-user@$(ec2Host) "docker ps --filter name=livraria && docker logs --tail 20 livraria"
+      displayName: 'Evidencia: logs do container'
+      condition: succeededOrFailed()

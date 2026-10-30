@@ -109,3 +109,42 @@ def test_ver_capa_sem_capa_retorna_404(client):
 
 def test_ver_capa_livro_inexistente_retorna_404(client):
     assert client.get("/livros/999/capa").status_code == 404
+
+
+def test_home_serve_o_painel(client):
+    r = client.get("/")
+    assert r.status_code == 200
+    assert b"Livraria Cloud" in r.data
+    r.close()
+
+
+def test_info_expoe_configuracao_sem_segredos(client, monkeypatch):
+    monkeypatch.setenv("AWS_BUCKET_NAME", "bucket-teste")
+    monkeypatch.setenv("BUILD_ID", "42")
+    dados = client.get("/info").get_json()
+    assert dados["versao"] == "42"
+    assert dados["bucket"] == "bucket-teste"
+    assert not any("senha" in chave or "password" in chave for chave in dados)
+
+
+def test_logs_registra_requisicoes(client):
+    client.get("/health")
+    ultimas = client.get("/logs").get_json()
+    assert any(item["caminho"] == "/health" and item["status"] == 200 for item in ultimas)
+
+
+def test_logs_ignora_polling_do_painel(client):
+    client.get("/info", headers={"X-Painel": "1"})
+    ultimas = client.get("/logs").get_json()
+    assert not any(item["caminho"] == "/info" for item in ultimas)
+
+
+def test_excluir_livro_ok(client):
+    livro_id = criar_livro(client)
+    assert client.delete(f"/livros/{livro_id}").status_code == 200
+    lista = client.get("/livros").get_json()
+    assert all(livro["id"] != livro_id for livro in lista)
+
+
+def test_excluir_livro_inexistente_retorna_404(client):
+    assert client.delete("/livros/999").status_code == 404
